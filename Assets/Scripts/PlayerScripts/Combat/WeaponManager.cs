@@ -18,7 +18,7 @@ public class WeaponManager : MonoBehaviour {
 	
 	void Awake()
 	{
-		crosshair = transform.FindChild ("Crosshair");
+		crosshair = transform.Find ("Crosshair");
 	}
 
 	// Update is called once per frame
