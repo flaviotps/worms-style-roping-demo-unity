@@ -15,9 +15,15 @@ public class PlayerController : MonoBehaviour {
 	public Vector2 targetVelocity;
 	private WeaponManager weaponManager;
 
+	public float airRotationLerpSpeed = 8f;
+	public float groundRotationLerpSpeed = 12f;
+	public float wallBounceMultiplier = 1.08f;
+	public float wallBounceBoost = 1.2f;
+	public float minWallBounceSpeed = 1.5f;
+
 	private PhysicsMaterial2D physMatBouncy;
 	private PhysicsMaterial2D physMatRegular;
-	private bool hooked;
+	private Rigidbody2D body;
 
 	void Awake()
 	{
@@ -27,42 +33,41 @@ public class PlayerController : MonoBehaviour {
 		groundCheck.transform.localPosition = groundCheckPosition;
 
 		weaponManager = gameObject.GetComponent<WeaponManager>();
+		body = gameObject.GetComponent<Rigidbody2D>();
 
 		physMatBouncy = Resources.Load<PhysicsMaterial2D>("p_BouncyPhysMat");
-		physMatRegular = Resources.Load<PhysicsMaterial2D>("p_regularPhysMat");
-
-	//	Physics2D.IgnoreLayerCollision (2,31);
+		physMatRegular = Resources.Load<PhysicsMaterial2D>("p_RegularPhysMat");
 	}
 		
 	void FixedUpdate()
 	{
 		grounded = Physics2D.OverlapCircle (groundCheck.transform.position, groundRadius, whatIsGround);
 
-		Vector2 newVelocity;
-		newVelocity = new Vector2(Input.GetAxis ("Horizontal"), 0);
-		if(newVelocity.magnitude > 1)
-			newVelocity.Normalize ();
+		Vector2 moveInput = new Vector2(Input.GetAxis ("Horizontal"), 0);
+		if(moveInput.magnitude > 1)
+			moveInput.Normalize ();
+
+		UpdateFacing(moveInput.x);
 
 		if(grounded)
 		{
-			GetComponent<Rigidbody2D>().velocity += newVelocity * groundSpeed;
+			body.velocity += moveInput * groundSpeed;
 			
-			float desiredSpeed = GetComponent<Rigidbody2D>().velocity.x;
-			
+			float desiredSpeed = body.velocity.x;
 			desiredSpeed = Mathf.Clamp (desiredSpeed, -groundSpeed, groundSpeed);
-			GetComponent<Rigidbody2D>().velocity = new Vector2(desiredSpeed, GetComponent<Rigidbody2D>().velocity.y);
+			body.velocity = new Vector2(desiredSpeed, body.velocity.y);
 
 			if(Input.GetButtonDown ("Jump"))
 			{
-				GetComponent<Rigidbody2D>().AddForce (new Vector2(0, jumpForce));
+				body.AddForce (new Vector2(0, jumpForce));
 			}
 		}
 		else if(weaponManager.hook && weaponManager.hookScript.hooked)
 		{
-			{
-				GetComponent<Rigidbody2D>().velocity += newVelocity * airSpeed;
-			}
+			body.velocity += moveInput * airSpeed;
 		}
+
+		UpdateBodyRotation();
 
 		if(weaponManager.hook && weaponManager.hookScript.hooked)
 		{
@@ -71,6 +76,52 @@ public class PlayerController : MonoBehaviour {
 		else
 		{
 			ChangeCollMat(physMatRegular);
+		}
+	}
+
+	void UpdateFacing(float horizontalInput)
+	{
+		if(Mathf.Abs(horizontalInput) < 0.01f)
+			return;
+
+		Vector3 currentScale = transform.localScale;
+		currentScale.x = Mathf.Abs(currentScale.x) * Mathf.Sign(horizontalInput);
+		transform.localScale = currentScale;
+	}
+
+	void UpdateBodyRotation()
+	{
+		float targetZ = 0f;
+		float lerpSpeed = groundRotationLerpSpeed;
+
+		if(!grounded && body.velocity.sqrMagnitude > 0.01f)
+		{
+			targetZ = Mathf.Atan2(body.velocity.y, body.velocity.x) * Mathf.Rad2Deg - 90f;
+			lerpSpeed = airRotationLerpSpeed;
+		}
+
+		float z = Mathf.LerpAngle(transform.eulerAngles.z, targetZ, Time.fixedDeltaTime * lerpSpeed);
+		transform.rotation = Quaternion.Euler(0f, 0f, z);
+	}
+
+	void OnCollisionEnter2D(Collision2D collision)
+	{
+		if(grounded || collision.contacts.Length == 0)
+			return;
+
+		for(int i = 0; i < collision.contacts.Length; i++)
+		{
+			Vector2 normal = collision.contacts[i].normal;
+			if(Vector2.Dot(normal, Vector2.up) > 0.5f)
+				continue;
+
+			Vector2 currentVelocity = body.velocity;
+			if(currentVelocity.magnitude < minWallBounceSpeed)
+				return;
+
+			Vector2 reflected = Vector2.Reflect(currentVelocity, normal).normalized * currentVelocity.magnitude * wallBounceMultiplier;
+			body.velocity = reflected + normal * wallBounceBoost;
+			return;
 		}
 	}
 

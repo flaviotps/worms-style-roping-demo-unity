@@ -8,6 +8,7 @@ public class WeaponManager : MonoBehaviour {
 	public float ropeClimbSpeed = 1;
 	public float maxLength = 30;
 	public bool hooked;
+	public float launcherLength = 1.5f;
 
 	[HideInInspector]
 	public GameObject hook;
@@ -40,7 +41,11 @@ public class WeaponManager : MonoBehaviour {
 
 	void SpawnHook()
 	{
-		hook = Instantiate (Resources.Load ("RopeHook"), crosshair.position + crosshair.up *1.5f, crosshair.rotation) as GameObject;
+		if(!crosshair)
+			return;
+
+		Vector3 spawnPosition = crosshair.position + crosshair.up * launcherLength;
+		hook = Instantiate (Resources.Load ("RopeHook"), spawnPosition, crosshair.rotation) as GameObject;
 		hookScript = hook.GetComponent<RopeLogic>();
 		hookScript.owner = gameObject;
 	}
