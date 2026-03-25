@@ -29,7 +29,7 @@ public class PlayerController : MonoBehaviour {
 		weaponManager = gameObject.GetComponent<WeaponManager>();
 
 		physMatBouncy = Resources.Load<PhysicsMaterial2D>("p_BouncyPhysMat");
-		physMatRegular = Resources.Load<PhysicsMaterial2D>("p_regularPhysMat");
+		physMatRegular = Resources.Load<PhysicsMaterial2D>("p_RegularPhysMat");
 
 	//	Physics2D.IgnoreLayerCollision (2,31);
 	}

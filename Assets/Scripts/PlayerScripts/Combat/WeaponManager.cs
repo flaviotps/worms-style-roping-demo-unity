@@ -40,6 +40,9 @@ public class WeaponManager : MonoBehaviour {
 
 	void SpawnHook()
 	{
+		if(!crosshair)
+			return;
+
 		hook = Instantiate (Resources.Load ("RopeHook"), crosshair.position + crosshair.up *1.5f, crosshair.rotation) as GameObject;
 		hookScript = hook.GetComponent<RopeLogic>();
 		hookScript.owner = gameObject;
