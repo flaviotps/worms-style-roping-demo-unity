@@ -1,6 +1,11 @@
 
-This is an old project, I'm not even sure what version of Unity3D it uses, but a number of people have asked for the code so here it is.
-If you get it working let me know, maybe make a PR.  I hope it's useful to somebody.
+This project has been migrated from Unity 5.0.1f1 to Unity 2022.3.62f1 (LTS).
+
+Migration notes:
+
+- Added a modern Unity Package Manager `Packages/manifest.json` with built-in engine modules.
+- Updated API usage in gameplay scripts (`Transform.Find` and `LineRenderer.positionCount`) to match current Unity APIs.
+- Removed legacy UnityScript (`.js`) image-effect scripts that are no longer supported by modern Unity versions.
 
 
 Video of the original project from May 2014:

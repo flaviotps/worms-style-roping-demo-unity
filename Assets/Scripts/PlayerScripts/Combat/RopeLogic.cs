@@ -28,7 +28,7 @@ public class RopeLogic : Projectile {
 		spring.enableCollision = true;
 		anchors = new List<Vector2>();
 		LR = gameObject.GetComponent<LineRenderer>();
-		LR.SetVertexCount (2);
+		LR.positionCount = 2;
 	}
 	
 	void FixedUpdate () 
@@ -132,7 +132,7 @@ public class RopeLogic : Projectile {
 	void LineRenderer()
 	{
 		LR.SetPosition (0,anchors[0]);
-		LR.SetVertexCount (anchors.Count+1);
+		LR.positionCount = anchors.Count+1;
 		LR.SetPosition (anchors.Count,owner.transform.position);
 		LR.SetPosition (anchors.Count-1, anchors[anchors.Count-1]);
 	}
