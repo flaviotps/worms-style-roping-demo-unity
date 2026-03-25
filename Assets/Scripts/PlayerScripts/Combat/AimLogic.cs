@@ -1,34 +1,49 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 
 public class AimLogic : MonoBehaviour {
 
 	private MeshRenderer meshRenderer;
+	private Camera mainCamera;
+	public float stickAimDeadZone = 0.2f;
 
-
-	
 	// Use this for initialization
 	void Start () 
 	{
 		meshRenderer = gameObject.GetComponent<MeshRenderer>();
-		meshRenderer.enabled = false;
+		mainCamera = Camera.main;
 	}
-	
+
 	// Update is called once per frame
 	void Update () 
 	{
-		Vector3 aimVector = new Vector2(Input.GetAxis ("RightHorizontal"), Input.GetAxis ("RightVertical"));
+		if(!mainCamera)
+			mainCamera = Camera.main;
 
-		//If player aims, activate crosshair and set rotation
-		if(Input.GetAxis ("RightHorizontal") != 0 || Input.GetAxis ("RightVertical") != 0)
+		Vector2 stickAimVector = new Vector2(Input.GetAxis ("RightHorizontal"), Input.GetAxis ("RightVertical"));
+		bool hasStickAim = stickAimVector.magnitude > stickAimDeadZone;
+
+		bool hasMouseAim = false;
+		Vector2 mouseAimVector = transform.up;
+
+		if(mainCamera)
 		{
-			transform.eulerAngles = new Vector3(transform.eulerAngles.x, transform.eulerAngles.y, Mathf.Atan2(aimVector.x *-1, aimVector.y * -1) * Mathf.Rad2Deg);
-			meshRenderer.enabled = true;
+			Vector3 mouseScreenPosition = Input.mousePosition;
+			mouseScreenPosition.z = Mathf.Abs(mainCamera.transform.position.z - transform.position.z);
+			Vector3 mouseWorldPosition = mainCamera.ScreenToWorldPoint(mouseScreenPosition);
+			mouseAimVector = mouseWorldPosition - transform.position;
+			hasMouseAim = mouseAimVector.sqrMagnitude > 0.0001f;
 		}
-		else
-			//Deactivate crosshair when not aiming;
-			meshRenderer.enabled = false;
+
+		Vector2 aimVector = hasStickAim ? stickAimVector : mouseAimVector;
+
+		if(hasMouseAim || hasStickAim)
+		{
+			float aimAngle = Mathf.Atan2(aimVector.y, aimVector.x) * Mathf.Rad2Deg - 90f;
+			transform.rotation = Quaternion.Euler(0f, 0f, aimAngle);
+		}
+
+		if(meshRenderer)
+			meshRenderer.enabled = true;
 	}
-
-
 }
