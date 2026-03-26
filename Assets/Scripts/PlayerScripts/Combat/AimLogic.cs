@@ -18,7 +18,9 @@ public class AimLogic : MonoBehaviour {
 		playerController = GetComponentInParent<PlayerController>();
 		playerRb = GetComponentInParent<Rigidbody2D>();
 		mainCam = Camera.main;
-		meshRenderer.enabled = false;
+
+		if (meshRenderer)
+			meshRenderer.enabled = false;
 	}
 	
 	void Update () 
@@ -42,9 +44,10 @@ public class AimLogic : MonoBehaviour {
 				transform.eulerAngles.y,
 				Mathf.Atan2(aimVector.x *-1, aimVector.y * -1) * Mathf.Rad2Deg
 			);
-			meshRenderer.enabled = true;
+			if (meshRenderer)
+				meshRenderer.enabled = true;
 		}
-		else
+		else if (meshRenderer)
 		{
 			meshRenderer.enabled = false;
 		}
