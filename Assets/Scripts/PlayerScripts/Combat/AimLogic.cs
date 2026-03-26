@@ -9,7 +9,6 @@ public class AimLogic : MonoBehaviour {
 	private Rigidbody2D playerRb;
 	private Camera mainCam;
 	private Transform playerTransform;
-	private Vector2 currentAimDirection = Vector2.up;
 
 	[Header("PC Controls")]
 	public bool allowMouseAim = true;
@@ -30,7 +29,7 @@ public class AimLogic : MonoBehaviour {
 		mainCam = Camera.main;
 
 		SetupCrosshairVisual();
-		SetCrosshairVisible(true);
+		SetCrosshairVisible(false);
 	}
 
 	void SetupCrosshairVisual()
@@ -43,18 +42,14 @@ public class AimLogic : MonoBehaviour {
 
 		if (!spriteRenderer.sprite)
 		{
-			Sprite resourceSprite = Resources.Load<Sprite>(crosshairSpriteResource);
-			if (resourceSprite)
+			Texture2D tex = Resources.Load<Texture2D>(crosshairSpriteResource);
+			if (tex)
 			{
-				spriteRenderer.sprite = resourceSprite;
+				spriteRenderer.sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 64f);
 			}
 			else
 			{
-				Texture2D tex = Resources.Load<Texture2D>(crosshairSpriteResource);
-				if (tex)
-					spriteRenderer.sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 64f);
-				else
-					spriteRenderer.sprite = CreateProceduralCrosshairSprite(generatedSpriteSize);
+				spriteRenderer.sprite = CreateProceduralCrosshairSprite(generatedSpriteSize);
 			}
 		}
 
@@ -108,12 +103,12 @@ public class AimLogic : MonoBehaviour {
 	
 	void Update () 
 	{
-		Vector2 manualAim = GetManualAimVector();
+		bool canManualAim = playerController && playerController.grounded;
 		Vector2 aimVector = Vector2.zero;
 
-		if (manualAim.sqrMagnitude > 0.0001f)
+		if (canManualAim)
 		{
-			aimVector = manualAim;
+			aimVector = GetManualAimVector();
 		}
 		else if(playerRb && playerRb.velocity.magnitude >= airborneAutoAimMinSpeed)
 		{
@@ -121,25 +116,26 @@ public class AimLogic : MonoBehaviour {
 		}
 
 		aimVector = ClampToUpperHemisphere(aimVector);
-		if (aimVector.sqrMagnitude > 0.0001f)
-			currentAimDirection = aimVector.normalized;
 
-		ApplyCrosshairTransform(currentAimDirection);
-		SetCrosshairVisible(true);
-	}
-
-	void ApplyCrosshairTransform(Vector2 direction)
-	{
-		if (playerTransform)
+		if(aimVector.sqrMagnitude > 0.0001f)
 		{
-			transform.position = (Vector2)playerTransform.position + direction * orbitRadius;
-		}
+			Vector2 dir = aimVector.normalized;
+			if (playerTransform)
+			{
+				transform.position = (Vector2)playerTransform.position + dir * orbitRadius;
+			}
 
-		transform.eulerAngles = new Vector3(
-			transform.eulerAngles.x,
-			transform.eulerAngles.y,
-			Mathf.Atan2(direction.x *-1, direction.y * -1) * Mathf.Rad2Deg
-		);
+			transform.eulerAngles = new Vector3(
+				transform.eulerAngles.x,
+				transform.eulerAngles.y,
+				Mathf.Atan2(dir.x *-1, dir.y * -1) * Mathf.Rad2Deg
+			);
+			SetCrosshairVisible(true);
+		}
+		else
+		{
+			SetCrosshairVisible(false);
+		}
 	}
 
 	Vector2 ClampToUpperHemisphere(Vector2 aimVector)
