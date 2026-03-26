@@ -8,5 +8,6 @@ Temp
 *.userprefs
 /.idea/
 /Logs/
+/Library/
 /Builds/
 /.idea/
