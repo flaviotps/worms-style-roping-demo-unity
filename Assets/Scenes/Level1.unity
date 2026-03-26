@@ -111,15 +111,15 @@ TextMesh:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 12966998}
-  m_Text: 'Controls:
+  m_Text: 'PC Controls:
 
-    Left analog:  Move left & right
+    A/D or Left/Right: Move
 
-    Right analog: Aim
+    Mouse or Arrows: Aim on ground
 
-    R1:  Shoot hook/cut rope
+    Space / Left Mouse / E: Fire or release rope
 
-    L1: Jump, Cut roope'
+    Ctrl / Right Mouse / Q: Jump or cut rope'
   m_OffsetZ: 0
   m_CharacterSize: 1
   m_LineSpacing: 1
@@ -2788,7 +2788,7 @@ TextMesh:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1103848944}
-  m_Text: Right stick = aim rope
+  m_Text: Mouse/Arrows = aim (grounded)
   m_OffsetZ: 0
   m_CharacterSize: .300000012
   m_LineSpacing: 1
@@ -4158,7 +4158,7 @@ TextMesh:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1453561572}
-  m_Text: Left stick = move/climb rope
+  m_Text: A/D move, W/S rope climb
   m_OffsetZ: 0
   m_CharacterSize: .300000012
   m_LineSpacing: 1
