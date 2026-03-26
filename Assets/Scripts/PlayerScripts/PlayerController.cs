@@ -17,10 +17,20 @@ public class PlayerController : MonoBehaviour {
 
 	private PhysicsMaterial2D physMatBouncy;
 	private PhysicsMaterial2D physMatRegular;
-	private bool hooked;
+	private Rigidbody2D rb;
+	private Transform playerMesh;
+
+	[Header("Worms2-style tuning")]
+	public float wallBounceMultiplier = 1.15f;
+	public float minWallBounceSpeed = 3f;
+	public float bounceNormalThreshold = 0.55f;
+	public Vector3 wormBodyScale = new Vector3(1.35f, 0.82f, 1f);
+	public Vector3 wormBodyOffset = new Vector3(0f, -0.06f, 0f);
 
 	void Awake()
 	{
+		rb = GetComponent<Rigidbody2D>();
+
 		groundCheck = new GameObject();
 		groundCheck.transform.name = "GroundCheck";
 		groundCheck.transform.parent = transform;
@@ -29,11 +39,16 @@ public class PlayerController : MonoBehaviour {
 		weaponManager = gameObject.GetComponent<WeaponManager>();
 
 		physMatBouncy = Resources.Load<PhysicsMaterial2D>("p_BouncyPhysMat");
-		physMatRegular = Resources.Load<PhysicsMaterial2D>("p_regularPhysMat");
+		physMatRegular = Resources.Load<PhysicsMaterial2D>("p_RegularPhysMat");
 
-	//	Physics2D.IgnoreLayerCollision (2,31);
+		playerMesh = transform.Find("PlayerMesh");
+		if (playerMesh)
+		{
+			playerMesh.localScale = wormBodyScale;
+			playerMesh.localPosition = wormBodyOffset;
+		}
 	}
-		
+
 	void FixedUpdate()
 	{
 		grounded = Physics2D.OverlapCircle (groundCheck.transform.position, groundRadius, whatIsGround);
@@ -45,23 +60,20 @@ public class PlayerController : MonoBehaviour {
 
 		if(grounded)
 		{
-			GetComponent<Rigidbody2D>().velocity += newVelocity * groundSpeed;
+			rb.velocity += newVelocity * groundSpeed;
 			
-			float desiredSpeed = GetComponent<Rigidbody2D>().velocity.x;
-			
+			float desiredSpeed = rb.velocity.x;
 			desiredSpeed = Mathf.Clamp (desiredSpeed, -groundSpeed, groundSpeed);
-			GetComponent<Rigidbody2D>().velocity = new Vector2(desiredSpeed, GetComponent<Rigidbody2D>().velocity.y);
+			rb.velocity = new Vector2(desiredSpeed, rb.velocity.y);
 
 			if(Input.GetButtonDown ("Jump"))
 			{
-				GetComponent<Rigidbody2D>().AddForce (new Vector2(0, jumpForce));
+				rb.AddForce (new Vector2(0, jumpForce));
 			}
 		}
 		else if(weaponManager.hook && weaponManager.hookScript.hooked)
 		{
-			{
-				GetComponent<Rigidbody2D>().velocity += newVelocity * airSpeed;
-			}
+			rb.velocity += newVelocity * airSpeed;
 		}
 
 		if(weaponManager.hook && weaponManager.hookScript.hooked)
@@ -74,13 +86,41 @@ public class PlayerController : MonoBehaviour {
 		}
 	}
 
+	void OnCollisionEnter2D(Collision2D collision)
+	{
+		if (collision.contactCount == 0)
+			return;
+
+		for (int i = 0; i < collision.contactCount; i++)
+		{
+			Vector2 normal = collision.GetContact(i).normal;
+			if (Mathf.Abs(normal.x) < bounceNormalThreshold)
+				continue;
+
+			Vector2 currentVelocity = rb.velocity;
+			if (currentVelocity.magnitude < minWallBounceSpeed)
+				continue;
+
+			if (Vector2.Dot(currentVelocity, normal) >= 0f)
+				continue;
+
+			Vector2 reflected = Vector2.Reflect(currentVelocity, normal) * wallBounceMultiplier;
+			rb.velocity = reflected;
+			break;
+		}
+	}
+
 	void ChangeCollMat(PhysicsMaterial2D physMat)
 	{
-		if(gameObject.GetComponent<Collider2D>().sharedMaterial != physMat)
+		if(!physMat)
+			return;
+
+		Collider2D col = gameObject.GetComponent<Collider2D>();
+		if(col.sharedMaterial != physMat)
 		{
-			gameObject.GetComponent<Collider2D>().sharedMaterial = physMat;
-			gameObject.GetComponent<Collider2D>().enabled = false;
-			gameObject.GetComponent<Collider2D>().enabled = true;
+			col.sharedMaterial = physMat;
+			col.enabled = false;
+			col.enabled = true;
 		}
 	}
 }
