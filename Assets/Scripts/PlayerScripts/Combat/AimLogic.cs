@@ -15,7 +15,7 @@ public class AimLogic : MonoBehaviour {
 		if(meshRenderer)
 			meshRenderer.enabled = false;
 	}
-	
+
 	// Update is called once per frame
 	void Update () 
 	{
