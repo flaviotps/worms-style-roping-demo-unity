@@ -6,7 +6,7 @@ public class RopeLogic : Projectile {
 	
 	public bool hooked;
 	public GameObject hook;
-	private SpringJoint2D spring;
+	private DistanceJoint2D rope;
 	public List<Vector2> anchors;
 	public float linecastOffset = 0.01f;
 	public float returnLCDist = 0.2f;
@@ -21,14 +21,67 @@ public class RopeLogic : Projectile {
 		speed = weaponManager.ropeHookSpeed;
 		transform.name = "RopeHook";
 		Physics2D.IgnoreLayerCollision (layerPlayer, layerHook, true);
-		GetComponent<Rigidbody2D>().velocity = transform.TransformDirection(Vector3.up * speed);
-		GetComponent<Rigidbody2D>().drag = weaponManager.ropeHookSpeedDamp;
+		GetComponent<Rigidbody2D>().linearVelocity = transform.TransformDirection(Vector3.up * speed);
+		GetComponent<Rigidbody2D>().linearDamping = weaponManager.ropeHookSpeedDamp;
 		
-		spring = owner.GetComponent<SpringJoint2D>();
-		spring.enableCollision = true;
+		rope = owner.GetComponent<DistanceJoint2D>();
+		if (!rope) rope = owner.AddComponent<DistanceJoint2D>(); // scene Player only has the old SpringJoint2D serialized
+		rope.enableCollision      = true;
+		rope.autoConfigureDistance = false;
+		rope.maxDistanceOnly       = true; // Worms2 feel: rope only stops you stretching past its length, free swing when slack
 		anchors = new List<Vector2>();
 		LR = gameObject.GetComponent<LineRenderer>();
 		LR.positionCount = 2;
+		StyleRopeVisual();
+	}
+
+	// The prefab's LineRenderer ships with no material assigned, which Unity renders
+	// as flat magenta (its "missing shader" fallback) — give it a proper glowing neon
+	// cable look instead. Also swaps the hook's plain default-material primitive mesh
+	// for a small glowing diamond sprite.
+	void StyleRopeVisual() {
+		if (LR.sharedMaterial == null)
+			LR.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
+
+		Color cable = new Color(0.55f, 0.95f, 1f);
+		LR.startColor = cable;
+		LR.endColor = cable;
+		LR.startWidth = 0.06f;
+		LR.endWidth = 0.06f;
+		LR.numCapVertices = 4;
+
+		// "Mesh" already carries a MeshRenderer — Unity won't let a SpriteRenderer (also
+		// a Renderer) live on the same GameObject, so the icon gets its own child instead.
+		var meshChild = transform.Find("Mesh");
+		if (meshChild) {
+			var oldRenderer = meshChild.GetComponent<MeshRenderer>();
+			if (oldRenderer) oldRenderer.enabled = false;
+		}
+
+		var icon = new GameObject("HookIcon");
+		icon.transform.SetParent(transform);
+		icon.transform.localPosition = Vector3.zero;
+		icon.transform.localRotation = Quaternion.identity;
+
+		var sr = icon.AddComponent<SpriteRenderer>();
+		sr.sprite = MakeHookSprite();
+		sr.color = cable;
+		sr.sortingOrder = 6;
+	}
+
+	Sprite MakeHookSprite() {
+		const int S = 16;
+		var tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
+		tex.filterMode = FilterMode.Bilinear;
+		Vector2 c = new Vector2((S - 1) / 2f, (S - 1) / 2f);
+		for (int y = 0; y < S; y++)
+		for (int x = 0; x < S; x++) {
+			float d = Mathf.Abs(x - c.x) / (S / 2f) + Mathf.Abs(y - c.y) / (S / 2f); // diamond distance
+			float a = Mathf.Clamp01(1f - d * 1.15f);
+			tex.SetPixel(x, y, new Color(1f, 1f, 1f, a * a));
+		}
+		tex.Apply(false, true);
+		return Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), S * 2.5f);
 	}
 	
 	void FixedUpdate () 
@@ -48,7 +101,12 @@ public class RopeLogic : Projectile {
 			RopeJointManager();
 
 		float allowedDistance = weaponManager.maxLength - combinedAnchorLen;
-		spring.distance = Mathf.Clamp ( spring.distance + Input.GetAxis ("Vertical") * -1 * weaponManager.ropeClimbSpeed, 1, allowedDistance);
+		// GetAxisRaw (not GetAxis) for instant stop on release — GetAxis smooths via the
+		// Input Manager's Gravity/Sensitivity settings. ropeClimbSpeed is a units-per-SECOND
+		// rate, so it must be scaled by fixedDeltaTime — it previously applied the full
+		// speed value every single FixedUpdate (50/sec), making W/S change rope length up
+		// to 50x faster than intended and overshoot well past where the key was released.
+		rope.distance = Mathf.Clamp ( rope.distance + Input.GetAxisRaw ("Vertical") * -1 * weaponManager.ropeClimbSpeed * Time.fixedDeltaTime, 1, allowedDistance);
 	}
 	void EarlyHookCheck()
 	{
@@ -122,10 +180,10 @@ public class RopeLogic : Projectile {
 	void SetSpring()
 	{
 		float dist = Vector2.Distance (owner.transform.position, anchors[anchors.Count-1]);
-	
-		spring.connectedAnchor = anchors[anchors.Count-1];
-		spring.distance = dist;
-		spring.enabled = true;
+
+		rope.connectedAnchor = anchors[anchors.Count-1];
+		rope.distance = dist;
+		rope.enabled = true;
 		LineRenderer();
 	}
 	

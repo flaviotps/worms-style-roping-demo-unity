@@ -5,13 +5,13 @@ public class WeaponManager : MonoBehaviour {
 
 	public float ropeHookSpeed = 150;
 	public float ropeHookSpeedDamp = 0.1f;
-	public float ropeClimbSpeed = 1;
+	public float ropeClimbSpeed = 6; // units per second now that RopeLogic scales it by Time.fixedDeltaTime
 	public float maxLength = 30;
 	public bool hooked;
 
 	[Header("Worms2-style release")]
-	public float ropeReleaseBoost = 1.15f;
-	public float ropeReleaseTangentialBias = 0.75f;
+	public float ropeReleaseBoost = 1.3f;
+	public float ropeReleaseTangentialBias = 0.6f;
 
 	[HideInInspector]
 	public GameObject hook;
@@ -66,7 +66,7 @@ public class WeaponManager : MonoBehaviour {
 		if (!playerController)
 			return true;
 
-		return playerController.grounded || rb.velocity.sqrMagnitude > 0.2f;
+		return playerController.grounded || rb.linearVelocity.sqrMagnitude > 0.2f;
 	}
 
 	void ResolveCrosshair()
@@ -119,8 +119,8 @@ public class WeaponManager : MonoBehaviour {
 				return mouseAim.normalized;
 		}
 
-		if (rb && rb.velocity.sqrMagnitude > 0.01f)
-			return rb.velocity.normalized;
+		if (rb && rb.linearVelocity.sqrMagnitude > 0.01f)
+			return rb.linearVelocity.normalized;
 
 		return Vector2.up;
 	}
@@ -138,7 +138,8 @@ public class WeaponManager : MonoBehaviour {
 		}
 
 		Destroy (hook);
-		gameObject.GetComponent<SpringJoint2D>().enabled = false;
+		var joint = gameObject.GetComponent<DistanceJoint2D>();
+		if (joint) joint.enabled = false;
 		hook = null;
 		hookScript = null;
 	}
@@ -155,12 +156,12 @@ public class WeaponManager : MonoBehaviour {
 
 		Vector2 tangentA = new Vector2(-radiusDir.y, radiusDir.x);
 		Vector2 tangentB = -tangentA;
-		Vector2 currentVelocity = rb.velocity;
+		Vector2 currentVelocity = rb.linearVelocity;
 
 		Vector2 bestTangent = Vector2.Dot(currentVelocity, tangentA) >= Vector2.Dot(currentVelocity, tangentB) ? tangentA : tangentB;
 		float speed = Mathf.Max(currentVelocity.magnitude, 0.01f);
 		Vector2 boostedVelocity = (currentVelocity + (bestTangent * speed * ropeReleaseTangentialBias)) * ropeReleaseBoost;
 
-		rb.velocity = boostedVelocity;
+		rb.linearVelocity = boostedVelocity;
 	}
 }

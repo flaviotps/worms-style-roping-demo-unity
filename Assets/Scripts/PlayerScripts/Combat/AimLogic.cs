@@ -18,6 +18,11 @@ public class AimLogic : MonoBehaviour {
     [Range(0.01f, 0.4f)]
     public float minUpperHemisphereY = 0.05f;
     
+    [Header("Rope Snap Assist")]
+    public bool snapAssist = true;
+    public float snapRadius = 10f;
+    [Range(2f, 30f)] public float snapAngleThreshold = 10f;
+
     [Header("Crosshair Visual")]
     public Texture2D crosshairTexture;
     public Sprite crosshairSprite;
@@ -131,14 +136,17 @@ public class AimLogic : MonoBehaviour {
         {
             aimVector = manualAim;
         }
-        else if(playerRb && playerRb.velocity.magnitude >= airborneAutoAimMinSpeed)
+        else if(playerRb && playerRb.linearVelocity.magnitude >= airborneAutoAimMinSpeed)
         {
-            aimVector = playerRb.velocity.normalized;
+            aimVector = playerRb.linearVelocity.normalized;
         }
 
         aimVector = ClampToUpperHemisphere(aimVector);
         if (aimVector.sqrMagnitude > 0.0001f)
+        {
+            aimVector = ApplySnapAssist(aimVector);
             currentAimDirection = aimVector.normalized;
+        }
 
         ApplyCrosshairTransform(currentAimDirection);
         SetCrosshairVisible(true);
@@ -171,6 +179,39 @@ public class AimLogic : MonoBehaviour {
         }
 
         return clamped;
+    }
+
+    // Nudges the aim toward the nearest "Hookable" surface point within a small
+    // cone around the current aim direction, so rope shots snap onto ledges and
+    // stalactite tips instead of requiring pixel-perfect aim.
+    Vector2 ApplySnapAssist(Vector2 aimDir)
+    {
+        if (!snapAssist || !playerTransform) return aimDir;
+
+        Vector2 origin = playerTransform.position;
+        Collider2D[] hits = Physics2D.OverlapCircleAll(origin, snapRadius);
+
+        float bestAngle = snapAngleThreshold;
+        Vector2 bestDir = aimDir;
+
+        foreach (var col in hits)
+        {
+            if (!col.CompareTag("Hookable")) continue;
+
+            Vector2 point = col.ClosestPoint(origin);
+            Vector2 dir = point - origin;
+            if (dir.sqrMagnitude < 0.01f) continue;
+            dir.Normalize();
+
+            float angle = Vector2.Angle(aimDir, dir);
+            if (angle < bestAngle)
+            {
+                bestAngle = angle;
+                bestDir = dir;
+            }
+        }
+
+        return bestDir;
     }
 
     void SetCrosshairVisible(bool value)

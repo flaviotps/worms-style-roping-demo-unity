@@ -26,6 +26,13 @@ public class PlayerController : MonoBehaviour {
 	public float bounceNormalThreshold = 0.55f;
 	public Vector3 wormBodyScale = new Vector3(1.35f, 0.82f, 1f);
 	public Vector3 wormBodyOffset = new Vector3(0f, -0.06f, 0f);
+	public float maxFallSpeed = 22f; // terminal velocity so falls feel controlled, not freefall-accelerating forever
+
+	[Header("Wall climb")]
+	public float wallClimbSpeed = 2.5f; // slow, deliberate climb — not a fast air-dash substitute
+	public float wallCheckDistance = 0.55f;
+	public float wallJumpPushForce = 6f;
+	public bool isWallGrabbing { get; private set; }
 
 	void Awake()
 	{
@@ -58,25 +65,28 @@ public class PlayerController : MonoBehaviour {
 		if(newVelocity.magnitude > 1)
 			newVelocity.Normalize ();
 
+		bool swinging = weaponManager.hook && weaponManager.hookScript.hooked;
+		UpdateWallGrab(swinging);
+
 		if(grounded)
 		{
-			rb.velocity += newVelocity * groundSpeed;
-			
-			float desiredSpeed = rb.velocity.x;
+			rb.linearVelocity += newVelocity * groundSpeed;
+
+			float desiredSpeed = rb.linearVelocity.x;
 			desiredSpeed = Mathf.Clamp (desiredSpeed, -groundSpeed, groundSpeed);
-			rb.velocity = new Vector2(desiredSpeed, rb.velocity.y);
+			rb.linearVelocity = new Vector2(desiredSpeed, rb.linearVelocity.y);
 
 			if(Input.GetButtonDown ("Jump"))
 			{
 				rb.AddForce (new Vector2(0, jumpForce));
 			}
 		}
-		else if(weaponManager.hook && weaponManager.hookScript.hooked)
+		else if(swinging)
 		{
-			rb.velocity += newVelocity * airSpeed;
+			rb.linearVelocity += newVelocity * airSpeed;
 		}
 
-		if(weaponManager.hook && weaponManager.hookScript.hooked)
+		if(swinging)
 		{
 			ChangeCollMat(physMatBouncy);
 		}
@@ -84,6 +94,45 @@ public class PlayerController : MonoBehaviour {
 		{
 			ChangeCollMat(physMatRegular);
 		}
+
+		if (!isWallGrabbing && rb.linearVelocity.y < -maxFallSpeed)
+			rb.linearVelocity = new Vector2(rb.linearVelocity.x, -maxFallSpeed);
+	}
+
+	// Hold the stick/key toward a wall while airborne (and not swinging) to grab it
+	// and creep up/down slowly with W/S — no automatic grip, you have to lean into it.
+	// Jump while grabbing to push off and let go.
+	void UpdateWallGrab(bool swinging)
+	{
+		if (grounded || swinging)
+		{
+			isWallGrabbing = false;
+			return;
+		}
+
+		float h = Input.GetAxisRaw ("Horizontal");
+		Vector2 dir = h < -0.1f ? Vector2.left : (h > 0.1f ? Vector2.right : Vector2.zero);
+		if (dir == Vector2.zero)
+		{
+			isWallGrabbing = false;
+			return;
+		}
+
+		RaycastHit2D wallHit = Physics2D.Raycast (transform.position, dir, wallCheckDistance, whatIsGround);
+		isWallGrabbing = wallHit.collider != null;
+		if (!isWallGrabbing)
+			return;
+
+		if (Input.GetButtonDown ("Jump"))
+		{
+			rb.linearVelocity = new Vector2 (-dir.x * wallJumpPushForce, 0f);
+			rb.AddForce (new Vector2(0, jumpForce));
+			isWallGrabbing = false;
+			return;
+		}
+
+		float climbInput = Input.GetAxisRaw ("Vertical");
+		rb.linearVelocity = new Vector2 (0f, climbInput * wallClimbSpeed);
 	}
 
 	void OnCollisionEnter2D(Collision2D collision)
@@ -97,7 +146,7 @@ public class PlayerController : MonoBehaviour {
 			if (Mathf.Abs(normal.x) < bounceNormalThreshold)
 				continue;
 
-			Vector2 currentVelocity = rb.velocity;
+			Vector2 currentVelocity = rb.linearVelocity;
 			if (currentVelocity.magnitude < minWallBounceSpeed)
 				continue;
 
@@ -105,7 +154,7 @@ public class PlayerController : MonoBehaviour {
 				continue;
 
 			Vector2 reflected = Vector2.Reflect(currentVelocity, normal) * wallBounceMultiplier;
-			rb.velocity = reflected;
+			rb.linearVelocity = reflected;
 			break;
 		}
 	}
